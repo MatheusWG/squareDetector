@@ -1,10 +1,6 @@
 import cv2
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from numpy.polynomial import polynomial as P
 from tkinter import *
-import keyboard
 
 frameWidth = 640
 frameHeight = 480
@@ -69,8 +65,6 @@ def fixColor(image):
 
 count = 0
 success, img = cap.read()
-
-# out = cv2.VideoWriter('output.avi', -1, 20.0, (1280,720))
 
 while True:
     success, img = cap.read()
@@ -191,8 +185,6 @@ while True:
         if (minY > y2):
             minY = y2
 
-        # cv2.line(imgFinal, (minX, minY), (minX, maxY), (0, 0, 255), 2, cv2.LINE_AA)
-        # cv2.line(imgFinal, (minX, minY), (maxX, minY), (0, 0, 255), 2, cv2.LINE_AA)
         cv2.line(imgFinal, (x1, y1), (x2, y2), (0, 255, 0), 2, cv2.LINE_AA)
     
     if (minX > cano):
@@ -211,11 +203,9 @@ while True:
                                 [imgCanny, imgFinal]))
                                 
     cv2.imshow("Result", imgStack)
-    # out.write(imgStack)
     
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
     
 cap.release()
-# out.release()
 cv2.destroyAllWindows()
