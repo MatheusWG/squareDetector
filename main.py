@@ -1,22 +1,33 @@
 import cv2
 import numpy as np
-from tkinter import *
-
-frameWidth = 640
-frameHeight = 480
-video_src = "errou_jato_compressed.mp4"
-cap = cv2.VideoCapture(video_src)
-cap.set(3, frameWidth)
-cap.set(4, frameHeight)
 
 def empty(a):
     pass
 
 cv2.namedWindow("Parameters")
 cv2.resizeWindow("Parameters", 640, 240)
-cv2.createTrackbar("Threshold1", "Parameters", 355, 1000, empty)
-cv2.createTrackbar("Threshold2", "Parameters", 200, 1000, empty)
-cv2.createTrackbar("Area", "Parameters", 5000, 30000, empty)
+
+frameWidth = 640
+frameHeight = 480
+video_src = "20210418_134812.mp4"
+cano = 200
+
+# video_src = "20210418_134143_compressed.mp4"
+if (video_src == "20210418_134143_compressed.mp4"):
+    cano = 550
+    cv2.createTrackbar("Threshold1", "Parameters", 180, 1000, empty)
+    cv2.createTrackbar("Threshold2", "Parameters", 313, 1000, empty)
+    cv2.createTrackbar("MinLineLength", "Parameters", 101, 400, empty)
+else:
+    cv2.createTrackbar("Threshold1", "Parameters", 143, 1000, empty)
+    cv2.createTrackbar("Threshold2", "Parameters", 230, 1000, empty)
+    cv2.createTrackbar("MinLineLength", "Parameters", 169, 400, empty)
+
+
+largura = 120
+cap = cv2.VideoCapture(video_src)
+cap.set(3, frameWidth)
+cap.set(4, frameHeight)
 
 def stackImages(scale,imgArray):
     rows = len(imgArray)
@@ -79,15 +90,15 @@ while True:
     if (count < 60):
         continue
 
-    # if (count == 140):
-    #     count = 1
-    #     cap = cv2.VideoCapture(video_src)
-    #     success, img = cap.read()
-    #     continue
+    if (count == 140 and cano != 200):
+        count = 1
+        cap = cv2.VideoCapture(video_src)
+        success, img = cap.read()
+        continue
 
     imgContour = img.copy()
     imgFinal = img.copy()
-    imgBlur = cv2.GaussianBlur(img, (7, 7), 1)
+    imgBlur = cv2.GaussianBlur(img, (5,5), 1)
     imgGray = cv2.cvtColor(imgBlur, cv2.COLOR_BGR2GRAY)
     threshold1 = cv2.getTrackbarPos("Threshold1", "Parameters")
     threshold2 = cv2.getTrackbarPos("Threshold2", "Parameters")
@@ -99,47 +110,35 @@ while True:
 
     imgCanny = cv2.Canny(imgGray,threshold1,threshold2)
 
-    # convert to binary by thresholding
-    ret, binary_map = cv2.threshold(imgCanny, 127,255,0)
+    ret, binary_map = cv2.threshold(imgCanny, 127, 255, 0)
 
-    # do connected components processing
     nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_map, None, None, None, 8, cv2.CV_32S)
 
-    #get CC_STAT_AREA component as stats[label, COLUMN] 
     areas = stats[1:,cv2.CC_STAT_AREA]
 
     result = np.zeros((labels.shape), np.uint8)
-
     for i in range(0, nlabels - 1):
-        if areas[i] >= 150:   #keep
+        if areas[i] >= 100:
             result[labels == i + 1] = 255
 
-    imgCannyWithoutFilter = imgCanny
     imgCanny = result
     
     kernel = np.ones((5,5), np.float32)
     imgDil = cv2.dilate(imgCanny, kernel, iterations=3)
-    getContours(imgDil, imgContour)
+    
+    imgCannyWithoutFilter = imgCanny
+    
+    minLineLength = cv2.getTrackbarPos("MinLineLength", "Parameters")
 
-    lines = cv2.HoughLinesP(image=imgDil, rho=3, theta=np.pi / 200, threshold=10, lines=np.array([]), minLineLength=100, maxLineGap=20)
+    lines = cv2.HoughLinesP(image=imgDil, rho=1, theta=np.pi / 200, threshold=10, lines=np.array([]), minLineLength=minLineLength, maxLineGap=10)
     if lines is None:
         continue
-    
-    minLeftXY = [10000, 10000]
-    maxLeftXY = [0, 0]
-    
-    minRightXY = [10000, 10000]
-    maxRightXY = [0, 0]
 
     minX = minY = 10000
     maxX = maxY = 0
 
-    cano = 200
-    largura = 120
-
-    cv2.line(imgFinal, (cano, 250), (cano, 0), (0, 255, 0), 2, cv2.LINE_AA)
-    cv2.line(imgFinal, (cano+largura, 250), (cano+largura, 0), (0, 255, 0), 2, cv2.LINE_AA)
-
+    # cv2.line(imgFinal, (cano, 250), (cano, 0), (0, 255, 0), 2, cv2.LINE_AA)
+    # cv2.line(imgFinal, (cano+largura, 250), (cano+largura, 0), (0, 255, 0), 2, cv2.LINE_AA)
     a, b, c = lines.shape
     for i in range(a):
         x1 = lines[i][0][0]
@@ -147,7 +146,6 @@ while True:
         
         x2 = lines[i][0][2]
         y2 = lines[i][0][3]
-        c = lines[i][0]
 
         if (x1 > 1260 or x1 < 10):
             continue
@@ -187,20 +185,43 @@ while True:
 
         cv2.line(imgFinal, (x1, y1), (x2, y2), (0, 255, 0), 2, cv2.LINE_AA)
     
-    if (minX > cano):
-        cv2.line(imgFinal, (cano, 250), (cano, 0), (0, 0, 255), 2, cv2.LINE_AA)
+    # if (minX > cano):
+    #     cv2.line(imgFinal, (cano, 250), (cano, 0), (0, 0, 255), 2, cv2.LINE_AA)
         
-    if (minX > cano+largura):
-        cv2.line(imgFinal, (cano+largura, 250), (cano+largura, 0), (0, 0, 255), 2, cv2.LINE_AA)
-    
-    if (maxX < cano):
-        cv2.line(imgFinal, (cano, 250), (cano, 0), (0, 0, 255), 2, cv2.LINE_AA)
-        
-    if (maxX < cano+largura):
-        cv2.line(imgFinal, (cano+largura, 250), (cano+largura, 0), (0, 0, 255), 2, cv2.LINE_AA)
+    # if (minX > cano+largura):
+    #     cv2.line(imgFinal, (cano+largura, 250), (cano+largura, 0), (0, 0, 255), 2, cv2.LINE_AA)
 
-    imgStack = stackImages(0.9,([img, imgCannyWithoutFilter],
-                                [imgCanny, imgFinal]))
+    meioCarretao = int((maxX - minX) / 2 + minX)
+    meioAltura = int((maxY - minY)/2 + minY)
+    # cv2.line(imgFinal, (minX, meioAltura), (maxX, meioAltura), (0, 255, 0), 2, cv2.LINE_AA)
+    # cv2.putText(imgFinal, 'Teste', (meioCarretao, meioAltura), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 2)
+    cv2.arrowedLine(imgFinal, (meioCarretao, 50), (meioCarretao, 200), (0, 255, 0), 20, cv2.LINE_AA, 0, 0.4)
+
+    meioCano = int(cano + largura/2)
+
+    # cv2.putText(imgFinal, 'Teste', (meioCano-50, 260), cv2.FONT_HERSHEY_PLAIN, 3, (0,255,0), 2)
+    # posicaoCano = 
+    valorPct = (meioCarretao - meioCano) / 100
+    # print('Meio: ' + meioCarretao)
+    # print('Meio Cano: ' + meioCano)
+    # print('Borda Esquerda:' + minX)
+
+    meioCarretaoRelativo = meioCarretao - minX
+    posicaoCano = meioCano / meioCarretao
+    if (meioCarretao > meioCano):
+        posicaoCano = posicaoCano-1
+    # print(max(minX, meioCano - minX))
+    # print(meioCarretaoRelativo)
+    print(posicaoCano)
+    
+    # if (maxX < cano):
+    #     cv2.line(imgFinal, (cano, 250), (cano, 0), (0, 0, 255), 2, cv2.LINE_AA)
+        
+    # if (maxX < cano+largura):
+    #     cv2.line(imgFinal, (cano+largura, 250), (cano+largura, 0), (0, 0, 255), 2, cv2.LINE_AA)
+
+    imgStack = stackImages(0.3,([img, imgCannyWithoutFilter],
+                                [imgDil, imgFinal]))
                                 
     cv2.imshow("Result", imgStack)
     
